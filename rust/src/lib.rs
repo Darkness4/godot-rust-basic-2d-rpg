@@ -1,4 +1,7 @@
+pub mod death;
+pub mod enemy;
 pub mod player;
+pub(crate) mod traits;
 
 use godot::prelude::*;
 

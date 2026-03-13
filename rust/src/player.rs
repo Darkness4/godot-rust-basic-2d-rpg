@@ -1,9 +1,11 @@
 use godot::classes::{
-    AnimationNodeStateMachinePlayback, AnimationTree, CharacterBody2D, ICharacterBody2D, Input,
-    InputEvent, InputEventMouseButton, Sprite2D,
+    AnimationNodeStateMachinePlayback, AnimationTree, Area2D, CharacterBody2D, ICharacterBody2D,
+    Input, InputEvent, InputEventMouseButton, Sprite2D,
 };
 use godot::global::MouseButton;
 use godot::prelude::*;
+
+use crate::traits::Damageable;
 
 #[derive(PartialEq)]
 enum State {
@@ -19,8 +21,12 @@ struct Player {
     #[export]
     #[init(val = 400.0)]
     speed: f32,
+    #[export]
     #[init(val = 0.6)]
     attack_speed: f64,
+    #[export]
+    #[init(val = 60)]
+    attack_damage: i32,
 
     #[init(val = State::Idle)]
     state: State,
@@ -71,7 +77,7 @@ impl ICharacterBody2D for Player {
 impl Player {
     fn update_movement(&mut self) -> Vector2 {
         let input = Input::singleton();
-        let mut velocity = input.get_vector("move_left", "move_right", "move_down", "move_up");
+        let mut velocity = input.get_vector("move_left", "move_right", "move_up", "move_down");
         if velocity.length() > 0.0 {
             velocity = velocity.normalized() * self.speed;
         }
@@ -86,7 +92,7 @@ impl Player {
             }
         }
 
-        return velocity;
+        velocity
     }
 
     fn update_animation(&mut self) {
@@ -125,5 +131,15 @@ impl Player {
     #[func]
     fn set_to_idle(&mut self) {
         self.state = State::Idle;
+    }
+
+    #[func]
+    fn on_hit_box_area_entered(&mut self, area: Gd<Area2D>) {
+        if let Some(owner) = area.get_owner()
+            && let Ok(mut damageable) = owner.try_dynify::<dyn Damageable>()
+        {
+            godot_print!("hit on damageable");
+            damageable.dyn_bind_mut().take_damage(self.attack_damage);
+        }
     }
 }
