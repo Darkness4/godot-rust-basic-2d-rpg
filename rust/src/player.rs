@@ -17,7 +17,7 @@ enum State {
 
 #[derive(GodotClass)]
 #[class(init,base=CharacterBody2D)]
-struct Player {
+pub struct Player {
     #[export]
     #[init(val = 400.0)]
     speed: f32,
@@ -27,6 +27,9 @@ struct Player {
     #[export]
     #[init(val = 60)]
     attack_damage: i32,
+    #[export]
+    #[init(val = 180)]
+    hitpoints: i32,
 
     #[init(val = State::Idle)]
     state: State,
@@ -138,8 +141,22 @@ impl Player {
         if let Some(owner) = area.get_owner()
             && let Ok(mut damageable) = owner.try_dynify::<dyn Damageable>()
         {
-            godot_print!("hit on damageable");
+            godot_print!("hit on damageable, hp left: {}", self.hitpoints);
             damageable.dyn_bind_mut().take_damage(self.attack_damage);
+        }
+    }
+
+    fn death(&mut self) {
+        godot_print!("player dead");
+    }
+}
+
+#[godot_dyn]
+impl Damageable for Player {
+    fn take_damage(&mut self, damage_taken: i32) {
+        self.hitpoints -= damage_taken;
+        if self.hitpoints <= 0 {
+            self.death()
         }
     }
 }
