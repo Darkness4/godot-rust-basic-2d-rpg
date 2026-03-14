@@ -2,6 +2,7 @@ use godot::classes::{
     AnimationNodeStateMachinePlayback, AnimationTree, Area2D, CharacterBody2D, ICharacterBody2D,
     NavigationAgent2D, Sprite2D,
 };
+use godot::global::randf_range;
 use godot::prelude::*;
 
 use crate::player::Player;
@@ -44,6 +45,11 @@ struct Enemy {
     #[init(val = State::Idle)]
     state: State,
 
+    #[init(val = OnReady::manual())]
+    repath_interval: OnReady<f64>,
+    #[init(val = 0.0)]
+    repath_timer: f64,
+
     #[init(node = "AnimationTree")]
     animation_tree: OnReady<Gd<AnimationTree>>,
     #[init(val = OnReady::manual())]
@@ -85,12 +91,15 @@ impl ICharacterBody2D for Enemy {
             .callable("on_navigation_agent_2d_velocity_computed");
         self.navigation_agent
             .connect("velocity_computed", &callback);
+
+        self.repath_interval.init(randf_range(0.2, 0.35))
     }
 
-    fn physics_process(&mut self, _delta: f64) {
+    fn physics_process(&mut self, delta: f64) {
         if self.state == State::Dead || self.state == State::Attack {
             return;
         }
+        self.repath_timer -= delta;
 
         let player_position = self.player.get_global_position();
         let distance_to_player = self
@@ -170,6 +179,10 @@ impl Enemy {
     }
 
     fn move_to(&mut self, target: Vector2) {
+        if self.repath_timer > 0.0 {
+            return;
+        }
+        self.repath_timer = self.repath_interval.get_property();
         self.navigation_agent.set_target_position(target);
         let next_path_position = self.navigation_agent.get_next_path_position();
 
